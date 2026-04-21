@@ -8,6 +8,9 @@ if ! command -v curl >/dev/null 2>&1; then
     exit 1
 fi
 
+# Configurações do Telegram
+source /usr/local/bin/monitor_XLX_data
+
 # Arquivo temporário para armazenar os últimos eventos e evitar mensagens repetidas
 TEMP_FILE="/tmp/xlxd_last_events"
 touch "$TEMP_FILE"

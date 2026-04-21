@@ -210,23 +210,23 @@ The script uses `/tmp/xlxd_last_events` as a temporary file to track duplicate e
 journalctl -u xlxd.service -f
         │
         ▼
-┌───────────────────────┐
-│    Journal line       │
-└───────────┬───────────┘
-            │
-     ┌──────┴──────────────┐
-     ▼                     ▼                    ▼
+┌─────────────────────┐
+│           Journal line            │
+└───────────┬─────────┘
+                    │
+     ┌────────┴───┬────────────┐
+     ▼                    ▼                    ▼
 Gatekeeper?           Connect?            Disconnect?
 (any callsign)        (REPEATER_          (REPEATER_
                        LIST)               LIST)
-     │                     │                    │
-     ▼                     ▼                    ▼
+     │                    │                    │
+     ▼                    ▼                    ▼
 Anti-spam             Format              Format
 (15/30 s)             message             message
-     │                     │                    │
-     └──────────┬───────────┘                   │
-                ▼                               │
-   send_telegram_message(msg, callsign) ◄───────┘
+     │                    │                    │
+     └─────┬──────┴───────────┬┘
+               ▼                              │
+   send_telegram_message (msg, callsign) ◄────┘
                 │
                 ▼
    ENABLE_PREVIEW=1 → QRZ.com card shown in message

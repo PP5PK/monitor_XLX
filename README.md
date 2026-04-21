@@ -88,6 +88,9 @@ All adjustable options are centralised in the `monitor_XLX_data` file, installed
 TELEGRAM_API="YOUR_TOKEN_HERE"
 CHAT_ID="YOUR_CHAT_ID_HERE"
 
+# Reflector name as it will appear in messages (e.g., XLX300, XLXBRA)
+REF_NAME="XLX300"
+
 # QRZ.com preview card in messages: 1 = enabled, 0 = disabled
 ENABLE_PREVIEW=0
 
@@ -104,6 +107,7 @@ DEBUG=0
 |---|---|---|
 | `TELEGRAM_API` | token string | Bot token obtained via @BotFather |
 | `CHAT_ID` | integer | Destination chat or group ID (groups have a negative value) |
+| `REF_NAME` | string | Reflector name displayed in all notification messages (e.g., `XLX300`, `XLXBRA`) |
 | `ENABLE_PREVIEW` | `0` or `1` | Controls whether a QRZ.com preview card is shown in messages |
 | `REPEATER_LIST` | callsigns separated by `\|` | Repeaters monitored for connect and disconnect events |
 | `DEBUG` | `0` or `1` | Enables detailed journal logging for troubleshooting |
@@ -210,23 +214,23 @@ The script uses `/tmp/xlxd_last_events` as a temporary file to track duplicate e
 journalctl -u xlxd.service -f
         │
         ▼
-┌─────────────────────┐
-│           Journal line            │
-└───────────┬─────────┘
-                    │
-     ┌────────┴───┬────────────┐
-     ▼                    ▼                    ▼
+┌───────────────────────┐
+│    Journal line       │
+└───────────┬───────────┘
+            │
+     ┌──────┴──────────────┐
+     ▼                     ▼                    ▼
 Gatekeeper?           Connect?            Disconnect?
 (any callsign)        (REPEATER_          (REPEATER_
                        LIST)               LIST)
-     │                    │                    │
-     ▼                    ▼                    ▼
+     │                     │                    │
+     ▼                     ▼                    ▼
 Anti-spam             Format              Format
 (15/30 s)             message             message
-     │                    │                    │
-     └─────┬──────┴───────────┬┘
-               ▼                              │
-   send_telegram_message (msg, callsign) ◄────┘
+     │                     │                    │
+     └──────────┬───────────┘                   │
+                ▼                               │
+   send_telegram_message(msg, callsign) ◄───────┘
                 │
                 ▼
    ENABLE_PREVIEW=1 → QRZ.com card shown in message
@@ -271,6 +275,18 @@ sudo journalctl -u monitor_XLX.service -f
 ```
 
 With debug enabled, every captured journal line and all regex match groups are logged to the journal.
+
+---
+
+## 📋 Changelog
+
+### v1.2.0
+- **External configuration file** (`monitor_XLX_data`) — all user-adjustable parameters are now fully separated from the main script, which no longer needs to be edited
+- **Configurable reflector name** (`REF_NAME`) — the reflector name displayed in all Telegram notifications is now a parameter, making the script reusable across any XLX reflector without code changes
+- **QRZ.com preview card** (`ENABLE_PREVIEW`) — optional inline station preview card rendered directly in the Telegram message
+
+### v1.0.0
+- Initial release
 
 ---
 

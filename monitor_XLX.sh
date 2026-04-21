@@ -8,19 +8,9 @@ if ! command -v curl >/dev/null 2>&1; then
     exit 1
 fi
 
-# Configurações do Telegram
-TELEGRAM_API="Set_your_API_here"
-CHAT_ID="Set_your_ChatID_here"
-
 # Arquivo temporário para armazenar os últimos eventos e evitar mensagens repetidas
 TEMP_FILE="/tmp/xlxd_last_events"
 touch "$TEMP_FILE"
-
-# Lista de repetidoras a monitorar para eventos de conexão e desconexão (Foi retirada da lista a repetidora PY4DIG por não mostrar uma conexão estavel)
-REPEATER_LIST="KT4K|PU2UOL|PU2VLO|PA7LIM|F4WCP|M0WVV|MXOWVV|PP5CPI|PS7BBB|PY2KES|PY2KGV|PY2KJP|PY2KPE|PY4ALV|PY4KBH|PY4KDA|PY4KID|PY4RDI|PY4RFM|PY4RPF|PY4RPV"
-
-# Variável para ativar/desativar debug (0 = desativado, 1 = ativado)
-DEBUG=0
 
 # Regexes para parsing de logs
 REGEX_GATEKEEPER="^([A-Za-z]{3} [0-9]{1,2} [0-9]{2}:[0-9]{2}:[0-9]{2}).*Gatekeeper blocking (linking|transmitting) of ([A-Za-z0-9]{3,8})([[:space:]]*/?[[:space:]]*[A-Za-z0-9/ ]{0,4})?[[:space:]]+@ ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+) using protocol (-?[0-9]+)"
@@ -82,17 +72,26 @@ format_message() {
     if [ -z "$SUFIXO" ]; then
         echo "$TIMESTAMP - A Repetidora <a href=\"https://www.qrz.com/db/$INDICATIVO\">$INDICATIVO</a>, IP $IP ($PROTOCOLO) - $ACTION${MODULO:+-}$MODULO"
     else
-        echo "$TIMESTAMP - A Repetidora <a href=\"https://www.qrz.com/db/$INDICATIVO\">$INDICATIVO</a>-$SUFIXO, IP $IP ($PROTOCOLO) - $ACTION${MODULO:+-}$MODULO"
+        echo "$TIMESTAMP - A Repetidora <a href=\"https://www.qrz.com/db/$INDICATIVO\">$INDICATIVO</a>/$SUFIXO, IP $IP ($PROTOCOLO) - $ACTION${MODULO:+-}$MODULO"
     fi
 }
 
-# Função para enviar mensagem ao Telegram
+# Função para enviar mensagem ao Telegram (agora recebe INDICATIVO como segundo argumento para o preview, se ativado)
 send_telegram_message() {
     local MESSAGE="$1"
+    local INDICATIVO="$2"
+    local PREVIEW_OPTIONS
+    if [[ "$ENABLE_PREVIEW" -eq 1 ]]; then
+        PREVIEW_OPTIONS='{"url": "https://www.qrz.com/db/'"$INDICATIVO"'", "is_disabled": false, "prefer_large_media": true}'
+    else
+        PREVIEW_OPTIONS='{"is_disabled": true}'
+    fi
+    debug "Enviando mensagem: $MESSAGE com preview options: $PREVIEW_OPTIONS"
     curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_API/sendMessage" \
         -d chat_id="$CHAT_ID" \
         -d text="$MESSAGE" \
-        -d parse_mode=HTML
+        -d parse_mode=HTML \
+        -d link_preview_options="$PREVIEW_OPTIONS"
 }
 
 # Lê continuamente as linhas do journalctl para o serviço xlxd
@@ -151,7 +150,7 @@ sudo journalctl -u xlxd.service -f | while read -r LINE; do
         fi
 
         if [[ "$BLOCK_EVENT" == false ]]; then
-            send_telegram_message "$MESSAGE"
+            send_telegram_message "$MESSAGE" "$INDICATIVO"
         fi
 
         tail -n 100 "$TEMP_FILE" > "$TEMP_FILE.tmp" && mv "$TEMP_FILE.tmp" "$TEMP_FILE"
@@ -169,7 +168,7 @@ sudo journalctl -u xlxd.service -f | while read -r LINE; do
 
         TIMESTAMP_FORMATTED=$(format_timestamp "$TIMESTAMP_ORIGINAL")
         MESSAGE=$(format_message "$TIMESTAMP_FORMATTED" "$INDICATIVO" "$SUFIXO" "$IP" "$PROTOCOLO" "Conectou-se no XLX300" "$MODULO")
-        send_telegram_message "$MESSAGE"
+        send_telegram_message "$MESSAGE" "$INDICATIVO"
 
     # Verifica desconexão de repetidoras
     elif [[ "$LINE" =~ $REGEX_DISCONNECT ]]; then
@@ -184,7 +183,7 @@ sudo journalctl -u xlxd.service -f | while read -r LINE; do
 
         TIMESTAMP_FORMATTED=$(format_timestamp "$TIMESTAMP_ORIGINAL")
         MESSAGE=$(format_message "$TIMESTAMP_FORMATTED" "$INDICATIVO" "$SUFIXO" "$IP" "$PROTOCOLO" "Desconectou-se do XLX300" "$MODULO")
-        send_telegram_message "$MESSAGE"
+        send_telegram_message "$MESSAGE" "$INDICATIVO"
 
     else
         debug "Linha não corresponde à regex."

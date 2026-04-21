@@ -1,12 +1,12 @@
-# Dados do bot Telegram
-TELEGRAM_API="8543190228:AAGCQ3W26_hOPIyiCyQIOE858B3nPg9vpjo"
-CHAT_ID="1074921232"
+# Telegram bot credentials
+TELEGRAM_API="YOUR_TOKEN_HERE"
+CHAT_ID="YOUR_CHAT_ID_HERE"
 
-# Parâmetro para ativar/desativar o card (preview do link): 1 = ativado, 0 = desativado)
+# QRZ.com preview card in messages: 1 = enabled, 0 = disabled
 ENABLE_PREVIEW=0
 
-# Lista de repetidoras a monitorar para eventos de conexão e desconexão (Foi retirada da lista a repetidora PY4DIG por não mostrar uma conexão estavel)
-REPEATER_LIST="PU1STZ|HS8TOL|KA5ECX|KT4K|PU2UOL|PU2VLO|PA7LIM|F4WCP|M0WVV|MXOWVV|PP5CPI|PS7BBB|PY2KES|PY2KGV|PY2KJP|PY2KPE|PY4ALV|PY4KBH|PY4KDA|PY4KID|PY4RDI|PY4RFM|PY4RPF|PY4RPV"
+# Callsigns of repeaters to monitor, separated by |
+REPEATER_LIST="PP5KX|PY5KOD|PY0ABC|..."
 
-# Variável para ativar/desativar debug (0 = desativado, 1 = ativado)
+# Script debug mode: 1 = enabled, 0 = disabled
 DEBUG=0

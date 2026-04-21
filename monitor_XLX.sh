@@ -117,7 +117,7 @@ sudo journalctl -u xlxd.service -f | while read -r LINE; do
 
         TIMESTAMP_FORMATTED=$(format_timestamp "$TIMESTAMP_ORIGINAL")
         PROTOCOL_NAME=$(get_protocol_name "$PROTOCOL")
-        ACTION_LABEL=$([[ "$ACTION" == "linking" ]] && echo "Connection attempt on XLX300" || echo "Transmission attempt on XLX300")
+        ACTION_LABEL=$([[ "$ACTION" == "linking" ]] && echo "Connection attempt on $REF_NAME" || echo "Transmission attempt on $REF_NAME")
         if [ -z "$SUFFIX" ]; then
             MESSAGE="$TIMESTAMP_FORMATTED - <a href=\"https://www.qrz.com/db/$CALLSIGN\">$CALLSIGN</a>, IP $IP ($PROTOCOL_NAME) - $ACTION_LABEL"
         else
@@ -170,7 +170,7 @@ sudo journalctl -u xlxd.service -f | while read -r LINE; do
         debug "Connect: Timestamp: $TIMESTAMP_ORIGINAL, Callsign: $CALLSIGN, Suffix: '$SUFFIX', IP: $IP, Protocol: $PROTOCOL, Module: '$MODULE'"
 
         TIMESTAMP_FORMATTED=$(format_timestamp "$TIMESTAMP_ORIGINAL")
-        MESSAGE=$(format_message "$TIMESTAMP_FORMATTED" "$CALLSIGN" "$SUFFIX" "$IP" "$PROTOCOL" "Connected to XLX300" "$MODULE")
+        MESSAGE=$(format_message "$TIMESTAMP_FORMATTED" "$CALLSIGN" "$SUFFIX" "$IP" "$PROTOCOL" "Connected to $REF_NAME" "$MODULE")
         send_telegram_message "$MESSAGE" "$CALLSIGN"
 
     # Check for repeater disconnect events
@@ -185,7 +185,7 @@ sudo journalctl -u xlxd.service -f | while read -r LINE; do
         debug "Disconnect: Timestamp: $TIMESTAMP_ORIGINAL, Callsign: $CALLSIGN, Suffix: '$SUFFIX', IP: $IP, Protocol: $PROTOCOL, Module: '$MODULE'"
 
         TIMESTAMP_FORMATTED=$(format_timestamp "$TIMESTAMP_ORIGINAL")
-        MESSAGE=$(format_message "$TIMESTAMP_FORMATTED" "$CALLSIGN" "$SUFFIX" "$IP" "$PROTOCOL" "Disconnected from XLX300" "$MODULE")
+        MESSAGE=$(format_message "$TIMESTAMP_FORMATTED" "$CALLSIGN" "$SUFFIX" "$IP" "$PROTOCOL" "Disconnected from $REF_NAME" "$MODULE")
         send_telegram_message "$MESSAGE" "$CALLSIGN"
 
     else

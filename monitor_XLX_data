@@ -2,7 +2,7 @@
 TELEGRAM_API="YOUR_TOKEN_HERE"
 CHAT_ID="YOUR_CHAT_ID_HERE"
 
-# Refletor name, the name that will appear in messages, e.g., XLX300, XLXBRA, etc...
+# Reflector name as it will appear in messages (e.g., XLX300, XLXBRA)
 REF_NAME="XLX300"
 
 # QRZ.com preview card in messages: 1 = enabled, 0 = disabled

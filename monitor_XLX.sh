@@ -1,33 +1,33 @@
 #!/bin/bash
-# Script para monitoramento do serviço xlxd e envio de mensagens ao Telegram
-# Monitora eventos de bloqueio (Gatekeeper), conexão e desconexão de repetidoras específicas
+# Script for monitoring the xlxd service and sending Telegram notifications
+# Monitors Gatekeeper block events, and connect/disconnect events for specific repeaters
 
-# Verifica se o curl está instalado
+# Check if curl is installed
 if ! command -v curl >/dev/null 2>&1; then
-    echo "Erro: curl não está instalado. Instale-o para continuar."
+    echo "Error: curl is not installed. Please install it to continue."
     exit 1
 fi
 
-# Configurações do Telegram
+# Load configuration
 source /usr/local/bin/monitor_XLX_data
 
-# Arquivo temporário para armazenar os últimos eventos e evitar mensagens repetidas
+# Temporary file to store recent events and prevent duplicate messages
 TEMP_FILE="/tmp/xlxd_last_events"
 touch "$TEMP_FILE"
 
-# Regexes para parsing de logs
+# Regexes for log parsing
 REGEX_GATEKEEPER="^([A-Za-z]{3} [0-9]{1,2} [0-9]{2}:[0-9]{2}:[0-9]{2}).*Gatekeeper blocking (linking|transmitting) of ([A-Za-z0-9]{3,8})([[:space:]]*/?[[:space:]]*[A-Za-z0-9/ ]{0,4})?[[:space:]]+@ ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+) using protocol (-?[0-9]+)"
 REGEX_CONNECT="^([A-Za-z]{3} [0-9]{1,2} [0-9]{2}:[0-9]{2}:[0-9]{2}).*New client ($REPEATER_LIST)([[:space:]]*[A-Za-z0-9]{0,4})? at ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+) added with protocol ([A-Za-z]+)( on module ([A-Za-z]))?"
 REGEX_DISCONNECT="^([A-Za-z]{3} [0-9]{1,2} [0-9]{2}:[0-9]{2}:[0-9]{2}).*Client ($REPEATER_LIST)([[:space:]]*[A-Za-z0-9]{0,4})? at ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+) removed with protocol ([A-Za-z]+)( on module ([A-Za-z]))?"
 
-# Função para debug
+# Debug function
 debug() {
     if [[ "$DEBUG" -eq 1 ]]; then
         echo "DEBUG: $@"
     fi
 }
 
-# Função para converter data/hora do formato "Feb 22 20:30:07" para "22/02/2025 20:30:07"
+# Convert timestamp from syslog format "Feb 22 20:30:07" to "22/02/2025 20:30:07"
 format_timestamp() {
     local TIMESTAMP_ORIGINAL="$1"
     MONTH=$(echo "$TIMESTAMP_ORIGINAL" | cut -d' ' -f1)
@@ -51,10 +51,10 @@ format_timestamp() {
     echo "$DAY/$MONTH_NUMBER/$YEAR $TIME"
 }
 
-# Função para mapear número do protocolo para nome
+# Map protocol number to human-readable name
 get_protocol_name() {
-    local PROTOCOLO="$1"
-    case "$PROTOCOLO" in
+    local PROTOCOL="$1"
+    case "$PROTOCOL" in
         "1") echo "DExtra" ;;
         "2") echo "DPlus" ;;
         "3") echo "DCS" ;;
@@ -64,32 +64,32 @@ get_protocol_name() {
         "7") echo "YSF" ;;
         "8") echo "ICom G3" ;;
         "9") echo "IMRS" ;;
-        *) echo "Desconhecido" ;;
+        *) echo "Unknown" ;;
     esac
 }
 
-# Função para formatar mensagem com hyperlink
+# Format message with QRZ.com hyperlink
 format_message() {
-    local TIMESTAMP="$1" INDICATIVO="$2" SUFIXO="$3" IP="$4" PROTOCOLO="$5" ACTION="$6" MODULO="$7"
-    SUFIXO=$(echo "$SUFIXO" | sed 's/^\s*\/\s*//;s/^\s*//;s/\s*$//')
-    if [ -z "$SUFIXO" ]; then
-        echo "$TIMESTAMP - A Repetidora <a href=\"https://www.qrz.com/db/$INDICATIVO\">$INDICATIVO</a>, IP $IP ($PROTOCOLO) - $ACTION${MODULO:+-}$MODULO"
+    local TIMESTAMP="$1" CALLSIGN="$2" SUFFIX="$3" IP="$4" PROTOCOL="$5" ACTION="$6" MODULE="$7"
+    SUFFIX=$(echo "$SUFFIX" | sed 's/^\s*\/\s*//;s/^\s*//;s/\s*$//')
+    if [ -z "$SUFFIX" ]; then
+        echo "$TIMESTAMP - Repeater <a href=\"https://www.qrz.com/db/$CALLSIGN\">$CALLSIGN</a>, IP $IP ($PROTOCOL) - $ACTION${MODULE:+-}$MODULE"
     else
-        echo "$TIMESTAMP - A Repetidora <a href=\"https://www.qrz.com/db/$INDICATIVO\">$INDICATIVO</a>/$SUFIXO, IP $IP ($PROTOCOLO) - $ACTION${MODULO:+-}$MODULO"
+        echo "$TIMESTAMP - Repeater <a href=\"https://www.qrz.com/db/$CALLSIGN\">$CALLSIGN</a>/$SUFFIX, IP $IP ($PROTOCOL) - $ACTION${MODULE:+-}$MODULE"
     fi
 }
 
-# Função para enviar mensagem ao Telegram (agora recebe INDICATIVO como segundo argumento para o preview, se ativado)
+# Send message to Telegram (receives CALLSIGN as second argument for the preview card, if enabled)
 send_telegram_message() {
     local MESSAGE="$1"
-    local INDICATIVO="$2"
+    local CALLSIGN="$2"
     local PREVIEW_OPTIONS
     if [[ "$ENABLE_PREVIEW" -eq 1 ]]; then
-        PREVIEW_OPTIONS='{"url": "https://www.qrz.com/db/'"$INDICATIVO"'", "is_disabled": false, "prefer_large_media": true}'
+        PREVIEW_OPTIONS='{"url": "https://www.qrz.com/db/'"$CALLSIGN"'", "is_disabled": false, "prefer_large_media": true}'
     else
         PREVIEW_OPTIONS='{"is_disabled": true}'
     fi
-    debug "Enviando mensagem: $MESSAGE com preview options: $PREVIEW_OPTIONS"
+    debug "Sending message: $MESSAGE with preview options: $PREVIEW_OPTIONS"
     curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_API/sendMessage" \
         -d chat_id="$CHAT_ID" \
         -d text="$MESSAGE" \
@@ -97,98 +97,98 @@ send_telegram_message() {
         -d link_preview_options="$PREVIEW_OPTIONS"
 }
 
-# Lê continuamente as linhas do journalctl para o serviço xlxd
+# Continuously read lines from journalctl for the xlxd service
 sudo journalctl -u xlxd.service -f | while read -r LINE; do
-    debug "Linha capturada: $LINE"
+    debug "Captured line: $LINE"
 
-    # Verifica eventos de bloqueio do Gatekeeper
+    # Check for Gatekeeper block events
     if [[ "$LINE" =~ $REGEX_GATEKEEPER ]]; then
         TIMESTAMP_ORIGINAL="${BASH_REMATCH[1]}"
-        ACAO="${BASH_REMATCH[2]}"
-        INDICATIVO="${BASH_REMATCH[3]}"
-        SUFIXO="${BASH_REMATCH[4]}"
+        ACTION="${BASH_REMATCH[2]}"
+        CALLSIGN="${BASH_REMATCH[3]}"
+        SUFFIX="${BASH_REMATCH[4]}"
         IP="${BASH_REMATCH[5]}"
-        PROTOCOLO="${BASH_REMATCH[6]}"
+        PROTOCOL="${BASH_REMATCH[6]}"
 
-        debug "Gatekeeper: Timestamp: $TIMESTAMP_ORIGINAL, Ação: $ACAO, Indicativo: $INDICATIVO, Sufixo: '$SUFIXO', IP: $IP, Protocolo: $PROTOCOLO"
+        debug "Gatekeeper: Timestamp: $TIMESTAMP_ORIGINAL, Action: $ACTION, Callsign: $CALLSIGN, Suffix: '$SUFFIX', IP: $IP, Protocol: $PROTOCOL"
 
-        # Limpa o sufixo
-        SUFIXO=$(echo "$SUFIXO" | sed 's/^\s*\/\s*//;s/^\s*//;s/\s*$//')
+        # Clean up the suffix
+        SUFFIX=$(echo "$SUFFIX" | sed 's/^\s*\/\s*//;s/^\s*//;s/\s*$//')
 
         TIMESTAMP_FORMATTED=$(format_timestamp "$TIMESTAMP_ORIGINAL")
-        PROTOCOLO_NAME=$(get_protocol_name "$PROTOCOLO")
-        ACAO_FORMATADA=$([[ "$ACAO" == "linking" ]] && echo "Tentativa de conexão no XLX300" || echo "Tentativa de transmissão no XLX300")
-        if [ -z "$SUFIXO" ]; then
-            MESSAGE="$TIMESTAMP_FORMATTED - <a href=\"https://www.qrz.com/db/$INDICATIVO\">$INDICATIVO</a>, IP $IP ($PROTOCOLO_NAME) - $ACAO_FORMATADA"
+        PROTOCOL_NAME=$(get_protocol_name "$PROTOCOL")
+        ACTION_LABEL=$([[ "$ACTION" == "linking" ]] && echo "Connection attempt on XLX300" || echo "Transmission attempt on XLX300")
+        if [ -z "$SUFFIX" ]; then
+            MESSAGE="$TIMESTAMP_FORMATTED - <a href=\"https://www.qrz.com/db/$CALLSIGN\">$CALLSIGN</a>, IP $IP ($PROTOCOL_NAME) - $ACTION_LABEL"
         else
-            MESSAGE="$TIMESTAMP_FORMATTED - <a href=\"https://www.qrz.com/db/$INDICATIVO\">$INDICATIVO</a>/$SUFIXO, IP $IP ($PROTOCOLO_NAME) - $ACAO_FORMATADA"
+            MESSAGE="$TIMESTAMP_FORMATTED - <a href=\"https://www.qrz.com/db/$CALLSIGN\">$CALLSIGN</a>/$SUFFIX, IP $IP ($PROTOCOL_NAME) - $ACTION_LABEL"
         fi
 
         CURRENT_TIME=$(date +%s)
         BLOCK_EVENT=false
 
-        if [[ "$ACAO" == "transmitting" ]]; then
-            LAST_EVENT=$(grep "^$INDICATIVO transmitting " "$TEMP_FILE" | awk '{print $3}' | tail -n1)
+        if [[ "$ACTION" == "transmitting" ]]; then
+            LAST_EVENT=$(grep "^$CALLSIGN transmitting " "$TEMP_FILE" | awk '{print $3}' | tail -n1)
             if [[ -n "$LAST_EVENT" && $((CURRENT_TIME - LAST_EVENT)) -lt 30 ]]; then
-                debug "Ignorando mensagem repetida de transmissão para $INDICATIVO, tempo inferior a 30 segundos."
+                debug "Suppressing duplicate transmitting notification for $CALLSIGN (within 30 seconds)."
                 BLOCK_EVENT=true
             else
-                echo "$INDICATIVO transmitting $CURRENT_TIME" >> "$TEMP_FILE"
+                echo "$CALLSIGN transmitting $CURRENT_TIME" >> "$TEMP_FILE"
             fi
         fi
 
-        if [[ "$ACAO" == "linking" ]]; then
-            LAST_EVENT=$(grep "^$INDICATIVO linking $PROTOCOLO_NAME" "$TEMP_FILE" | awk '{print $4}' | tail -n1)
+        if [[ "$ACTION" == "linking" ]]; then
+            LAST_EVENT=$(grep "^$CALLSIGN linking $PROTOCOL_NAME" "$TEMP_FILE" | awk '{print $4}' | tail -n1)
             if [[ -n "$LAST_EVENT" && $((CURRENT_TIME - LAST_EVENT)) -lt 15 ]]; then
-                debug "Ignorando mensagem repetida de conexão para $INDICATIVO ($PROTOCOLO_NAME), tempo inferior a 15 segundos."
+                debug "Suppressing duplicate linking notification for $CALLSIGN ($PROTOCOL_NAME) (within 15 seconds)."
                 BLOCK_EVENT=true
             else
-                echo "$INDICATIVO linking $PROTOCOLO_NAME $CURRENT_TIME" >> "$TEMP_FILE"
+                echo "$CALLSIGN linking $PROTOCOL_NAME $CURRENT_TIME" >> "$TEMP_FILE"
             fi
         fi
 
-        if [[ "$INDICATIVO" == "PP0AA" ]]; then
-            debug "Ignorando evento para PP0AA."
+        if [[ "$CALLSIGN" == "PP0AA" ]]; then
+            debug "Ignoring event for PP0AA."
             continue
         fi
 
         if [[ "$BLOCK_EVENT" == false ]]; then
-            send_telegram_message "$MESSAGE" "$INDICATIVO"
+            send_telegram_message "$MESSAGE" "$CALLSIGN"
         fi
 
         tail -n 100 "$TEMP_FILE" > "$TEMP_FILE.tmp" && mv "$TEMP_FILE.tmp" "$TEMP_FILE"
 
-    # Verifica conexão de repetidoras
+    # Check for repeater connect events
     elif [[ "$LINE" =~ $REGEX_CONNECT ]]; then
         TIMESTAMP_ORIGINAL="${BASH_REMATCH[1]}"
-        INDICATIVO="${BASH_REMATCH[2]}"
-        SUFIXO="${BASH_REMATCH[3]}"
+        CALLSIGN="${BASH_REMATCH[2]}"
+        SUFFIX="${BASH_REMATCH[3]}"
         IP="${BASH_REMATCH[4]}"
-        PROTOCOLO="${BASH_REMATCH[5]}"
-        MODULO="${BASH_REMATCH[7]:-}"
+        PROTOCOL="${BASH_REMATCH[5]}"
+        MODULE="${BASH_REMATCH[7]:-}"
 
-        debug "Conexão: Timestamp: $TIMESTAMP_ORIGINAL, Indicativo: $INDICATIVO, Sufixo: '$SUFIXO', IP: $IP, Protocolo: $PROTOCOLO, Módulo: '$MODULO'"
+        debug "Connect: Timestamp: $TIMESTAMP_ORIGINAL, Callsign: $CALLSIGN, Suffix: '$SUFFIX', IP: $IP, Protocol: $PROTOCOL, Module: '$MODULE'"
 
         TIMESTAMP_FORMATTED=$(format_timestamp "$TIMESTAMP_ORIGINAL")
-        MESSAGE=$(format_message "$TIMESTAMP_FORMATTED" "$INDICATIVO" "$SUFIXO" "$IP" "$PROTOCOLO" "Conectou-se no XLX300" "$MODULO")
-        send_telegram_message "$MESSAGE" "$INDICATIVO"
+        MESSAGE=$(format_message "$TIMESTAMP_FORMATTED" "$CALLSIGN" "$SUFFIX" "$IP" "$PROTOCOL" "Connected to XLX300" "$MODULE")
+        send_telegram_message "$MESSAGE" "$CALLSIGN"
 
-    # Verifica desconexão de repetidoras
+    # Check for repeater disconnect events
     elif [[ "$LINE" =~ $REGEX_DISCONNECT ]]; then
         TIMESTAMP_ORIGINAL="${BASH_REMATCH[1]}"
-        INDICATIVO="${BASH_REMATCH[2]}"
-        SUFIXO="${BASH_REMATCH[3]}"
+        CALLSIGN="${BASH_REMATCH[2]}"
+        SUFFIX="${BASH_REMATCH[3]}"
         IP="${BASH_REMATCH[4]}"
-        PROTOCOLO="${BASH_REMATCH[5]}"
-        MODULO="${BASH_REMATCH[7]:-}"
+        PROTOCOL="${BASH_REMATCH[5]}"
+        MODULE="${BASH_REMATCH[7]:-}"
 
-        debug "Desconexão: Timestamp: $TIMESTAMP_ORIGINAL, Indicativo: $INDICATIVO, Sufixo: '$SUFIXO', IP: $IP, Protocolo: $PROTOCOLO, Módulo: '$MODULO'"
+        debug "Disconnect: Timestamp: $TIMESTAMP_ORIGINAL, Callsign: $CALLSIGN, Suffix: '$SUFFIX', IP: $IP, Protocol: $PROTOCOL, Module: '$MODULE'"
 
         TIMESTAMP_FORMATTED=$(format_timestamp "$TIMESTAMP_ORIGINAL")
-        MESSAGE=$(format_message "$TIMESTAMP_FORMATTED" "$INDICATIVO" "$SUFIXO" "$IP" "$PROTOCOLO" "Desconectou-se do XLX300" "$MODULO")
-        send_telegram_message "$MESSAGE" "$INDICATIVO"
+        MESSAGE=$(format_message "$TIMESTAMP_FORMATTED" "$CALLSIGN" "$SUFFIX" "$IP" "$PROTOCOL" "Disconnected from XLX300" "$MODULE")
+        send_telegram_message "$MESSAGE" "$CALLSIGN"
 
     else
-        debug "Linha não corresponde à regex."
+        debug "Line did not match any regex."
     fi
 done

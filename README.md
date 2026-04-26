@@ -128,7 +128,8 @@ This parameter controls how the QRZ.com link appears in Telegram messages:
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/PP5PK/monitor_XLX.git
+cd /usr/src/
+sudo git clone https://github.com/PP5PK/monitor_XLX.git
 cd monitor_XLX
 ```
 
@@ -137,7 +138,7 @@ cd monitor_XLX
 Fill in the token and chat ID obtained in the steps above and adjust any other options as needed:
 
 ```bash
-nano monitor_XLX_data
+sudo nano monitor_XLX_data
 ```
 
 ### 3. Copy the files
@@ -228,11 +229,11 @@ Gatekeeper?            Connect?             Disconnect?
 Anti-spam               Format                Format
 (15/30 s)               message               message
      │                    │                    │
-     └─────┬──────┴───────────┬┘
-               ▼                              │
-   send_telegram_message (msg, callsign) ◄────┘
-                │
-                ▼
+     └───────────┬─────────────┘
+                         ▼
+   send_telegram_message (msg, callsign)
+                  │
+                  ▼
    ENABLE_PREVIEW=1 → QRZ.com card shown in message
    ENABLE_PREVIEW=0 → plain clickable link in text only
 ```

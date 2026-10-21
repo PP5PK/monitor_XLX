@@ -1,6 +1,6 @@
 [Unit]
 Description=Monitoramento do xlxd e envio de notificações para o Telegram
-After=xlxd.service
+Before=xlxd.service
 BindsTo=xlxd.service
 
 [Service]

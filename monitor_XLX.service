@@ -1,7 +1,8 @@
 [Unit]
 Description=Monitoramento do xlxd e envio de notificações para o Telegram
+After=network-online.target
+Wants=network-online.target
 Before=xlxd.service
-BindsTo=xlxd.service
 
 [Service]
 #ExecStartPre=/bin/sleep 25
